@@ -2,13 +2,20 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <shader.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+float xOffset = 0.0f;
+float yOffset = 0.0f;
+float degree = 0.0f;
 
 int main()
 {
@@ -34,6 +41,8 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetKeyCallback(window, key_callback);
+
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (glewInit() != GLEW_OK)
@@ -49,12 +58,21 @@ int main()
     float firstTriangle[] = {
         -0.5f, -0.5f, 0.0f, // left
         0.5f, -0.5f, 0.0f,  // right
-        0.0f, 0.5f, 0.0f    // top
-    };
+        0.5f, 0.5f, 0.0f,   // top
+        -0.5f, 0.5f, 0.0f};
 
-    unsigned int VBO, VAO;
+    int indices[] = {
+        0,
+        1,
+        2,
+        0,
+        2,
+        3};
+
+    unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
     // first triangle setup
     // --------------------
     glBindVertexArray(VAO);
@@ -62,6 +80,9 @@ int main()
     glBufferData(GL_ARRAY_BUFFER, sizeof(firstTriangle), firstTriangle, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0); // Vertex attributes stay the same
     glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // glBindVertexArray(0); // no need to unbind at all as we directly bind a different VAO the next few lines
 
@@ -71,11 +92,7 @@ int main()
     // render loop
     // -----------
     Shader shader("../VertexShader.vs", "../FragmentShader.vs");
-    shader.use();
-    shader.setFloat("R", 1.0f);
-    shader.setFloat("G", 0.5f);
-    shader.setFloat("B", 0.2f);
-    shader.setFloat("xOffset", 0.5f);
+
     while (!glfwWindowShouldClose(window))
     {
         // render
@@ -84,8 +101,16 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // then we draw the second triangle using the data from the second VAO
+        glm::mat4 transform = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+        transform = glm::rotate(transform, -glm::radians(degree), glm::vec3(0.0f, 1.0f, 0.0f));
+        transform = glm::translate(transform, glm::vec3(xOffset, yOffset, 0.0f));
+        // get matrix's uniform location and set matrix
+        shader.use();
+        unsigned int transformLoc = glGetUniformLocation(shader.ID, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -111,4 +136,32 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+}
+
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+    {
+        yOffset += 0.1f;
+    }
+    else if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+    {
+        yOffset -= 0.1f;
+    }
+    else if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+    {
+        xOffset -= 0.1f;
+    }
+    else if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+    {
+        xOffset += 0.1f;
+    }
+    else if (key == GLFW_KEY_Q && action == GLFW_PRESS)
+    {
+        degree += 10.0f;
+    }
+    else if (key == GLFW_KEY_E && action == GLFW_PRESS)
+    {
+        degree -= 10.0f;
+    }
 }

@@ -111,6 +111,6 @@ void Shader::setFloat(const std::string &name, float value) const
     }
     else
     {
-        std::cout << "invalid uniform or not used" << std::endl;
+        // std::cout << "invalid uniform " << value << " or not used" << std::endl;
     }
 }
